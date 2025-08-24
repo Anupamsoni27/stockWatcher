@@ -10,7 +10,7 @@ url = "https://api.polygon.io/v2/reference/news"
 params = {
     "published_utc.gte": "2025-08-23T00:00:53Z",
     "order": "asc",
-    "limit": 5,
+    "limit": 1,
     "sort": "published_utc",
     "apiKey": "Dcdo2UR68BfktLsbSf6doJEE_cEDnyDC"
 }
@@ -21,7 +21,6 @@ pprint(data['results'])
 
 # Flatten nested dictionaries/lists
 df = pd.json_normalize(data['results'],
-                       record_path=['insights'],  # expands insights
                        meta=['article_url','author','description','id',
                              'image_url','keywords','published_utc','tickers','title',
                              ['publisher','name'], ['publisher','homepage_url']])

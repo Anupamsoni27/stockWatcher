@@ -23,6 +23,8 @@ class AirtableCRUD:
             return response.json()["records"][0]
         except requests.exceptions.RequestException as e:
             print(f"Error creating record: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Airtable API Response: {e.response.text}")
             return None
 
     def get_record(self, record_id):
@@ -56,14 +58,21 @@ class AirtableCRUD:
             print(f"Error deleting record: {e}")
             return None
 
-    def list_records(self, view=None):
+    def list_records(self, view=None, published_date_gte=None):
         try:
-            params = {"view": view} if view else {}
+            params = {}
+            if view:
+                params["view"] = view
+            if published_date_gte:
+                # Filtering by 'published_date' field for exact match
+                params["filterByFormula"] = f"{{published_date}} = \"{published_date_gte}\""
             response = requests.get(self.base_url, headers=self.headers, params=params)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error listing records: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Airtable API Response: {e.response.text}")
             return None
 
     def batch_create_records(self, records_data):
@@ -86,7 +95,6 @@ class AirtableCRUD:
             for table in tables_data:
                 if table.get('id') == self.table_name:
                     return table.get('fields', [])
-            print(f"Table '{self.table_name}' not found in base schema.")
             return None
         except requests.exceptions.RequestException as e:
             print(f"Error fetching table schema: {e}")
