@@ -110,11 +110,13 @@ def main():
                 'title': article.get('title'),
                 'author': article.get('author'),
                 'published_date': datetime.fromisoformat(article.get('published_utc').replace('Z', '+00:00')).strftime('%Y-%m-%d'),
+                'published_utc': article.get('published_utc').replace('Z', '+00:00'),
                 'article_url': article.get('article_url'),
                 'description': article.get('description'),
                 'image_url': article.get('image_url'),
                 'tickers': filtered_tickers,
                 'keywords': filtered_keywords,
+                'posted_status': 'false',
                 'insights': json.dumps(article.get('insights', [])), # Storing as JSON string for multilineText
             }
             if publisher_link_id:
