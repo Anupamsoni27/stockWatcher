@@ -126,7 +126,7 @@ def main():
 
         # Fetch existing records from Airtable to check for duplicates
         print("--- Fetching Existing Records from Airtable ---")
-        existing_records_response = airtable_crud.list_records(published_date_gte="2025-08-23") # Use the same date as news fetch or adjust
+        existing_records_response = airtable_crud.list_records(published_date_gte="2025-08-25") # Use the same date as news fetch or adjust
         existing_unique_ids = set()
 
         if existing_records_response and "records" in existing_records_response:
