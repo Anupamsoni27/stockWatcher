@@ -1,10 +1,7 @@
 import os
 import time
-
 import requests
-import pandas as pd
-import json
-from datetime import datetime
+
 from airtable_crud import AirtableCRUD
 from datetime import datetime, timedelta, timezone
 
@@ -15,9 +12,9 @@ AIRTABLE_TABLE_NAME = "tblsgL4bwLb4ujnZ5" # article table
 AIRTABLE_PUBLISHERS_TABLE_NAME = "tbldeb53sZHQiaNXs" # publishers table
 
 
-API_KEY = "bb_ma_25f7ea29a54f6f4b8edfd401a960e0"
-TEMPLATE_ID = "gwNr4n50xGdR5ROMBd"
-PROJECT_ID = "YvAwdo1gj7XMp6QXKm"  # from Bannerbear dashboard
+API_KEY = "bb_ma_eb6c9eb0a9a43915cead44aa562836"
+TEMPLATE_ID = "lzw71BD6EoA750eYkn"
+PROJECT_ID = "KDWmnAMxQqv180dVk4"  # from Bannerbear dashboard
 BANNERBEAR_BASE_URL = "https://api.bannerbear.com/v2"
 
 
@@ -49,7 +46,7 @@ def create_image(row_data):
                 "name": "title",
                 "text": data['title']
             },
-            {"name": "label_tag", "text": data["snippet"] if len(data["snippet"]) < 40  else  'Breaking News' },
+            {"name": "label_tag", "text": 'Stocks:  ' + data["symbols"] + ' Related News' if (data["symbols"] != '')  else  'Breaking News' },
             {"name": "subtitle", "text": "source: " + data["source"]},
             {"name": "footer_1", "text": "@the.current.capsule"},
             {"name": "footer_2", "text": "The Current Capsule"}
@@ -161,6 +158,8 @@ def main():
                 "snippet": article.get("snippet"),
                 "image_url": article.get("image_url"),
                 "source": article.get("source"),
+                "symbols": ", ".join(entity.get("symbol").split('.')[0] for entity in article.get("entities", []) if entity.get("symbol"))
+
             }
 
         # Batch create records in Airtable

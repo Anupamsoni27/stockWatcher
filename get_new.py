@@ -10,7 +10,7 @@ url = "https://api.polygon.io/v2/reference/news"
 params = {
     "published_utc.gte": "2025-08-23T00:00:53Z",
     "order": "asc",
-    "limit": 1,
+    "limit": 100,
     "sort": "published_utc",
     "apiKey": "Dcdo2UR68BfktLsbSf6doJEE_cEDnyDC"
 }
