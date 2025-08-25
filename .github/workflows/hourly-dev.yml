@@ -2,9 +2,11 @@ name: Run Python Script Hourly (Dev)
 
 on:
   schedule:
-    - cron: "* * * * *"   # every hour, at minute 0 (UTC)
-
-            # run workflow only when code is on dev branch
+    - cron: "*/5 * * * *"   # every hour, at minute 0 (UTC)
+  workflow_dispatch:       # manual trigger
+  push:
+    branches:
+      - main              # run workflow only when code is on dev branch
 
 jobs:
   run-python:
