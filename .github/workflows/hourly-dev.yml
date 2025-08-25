@@ -4,9 +4,7 @@ on:
   schedule:
     - cron: "*/3 * * * *"   # every hour, at minute 0 (UTC)
   workflow_dispatch:       # manual trigger
-  push:
-    branches:
-      - dev_marketAux               # run workflow only when code is on dev branch
+            # run workflow only when code is on dev branch
 
 jobs:
   run-python:
