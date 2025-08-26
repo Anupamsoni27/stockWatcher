@@ -1,8 +1,8 @@
-name: Run Python Script Hourly (Dev)
+name: Run Python Script Every 3 Minutes
 
 on:
   schedule:
-    - cron: "* * * * *"   # every hour, at minute 0 (UTC)
+    - cron: "*/3 * * * *"   # every 3 minutes
 
 jobs:
   run-python:
