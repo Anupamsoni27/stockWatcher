@@ -1,161 +1,178 @@
 import os
+import time
 import requests
-import pandas as pd
-import json
-from datetime import datetime
+
 from airtable_crud import AirtableCRUD
+from datetime import datetime, timedelta, timezone
 
 # Airtable Configuration
 AIRTABLE_API_KEY = "patTltTOPC4BsRhqI.f57c7f19de10ea692b9cc0ded290a4d569670e6ece3bee805a6582f64379bbc4"
 AIRTABLE_BASE_ID = "appDtlezbD4ebHqi6"
-AIRTABLE_TABLE_NAME = "tblS9BOGas8yDS05t" # article table
+AIRTABLE_TABLE_NAME = "tblsgL4bwLb4ujnZ5" # article table
 AIRTABLE_PUBLISHERS_TABLE_NAME = "tbldeb53sZHQiaNXs" # publishers table
 
+
+API_KEY = "bb_ma_eb6c9eb0a9a43915cead44aa562836"
+TEMPLATE_ID = "lzw71BD6EoA750eYkn"
+PROJECT_ID = "KDWmnAMxQqv180dVk4"  # from Bannerbear dashboard
+BANNERBEAR_BASE_URL = "https://api.bannerbear.com/v2"
+
+
 # Polygon.io Configuration
-POLYGON_API_KEY = "Dcdo2UR68BfktLsbSf6doJEE_cEDnyDC"
-POLYGON_NEWS_URL = "https://api.polygon.io/v2/reference/news"
+MARKET_AUX_API_KEY = "LQz9iaxCPhvpOPqV2sBvP02iANaizbH19RhQi1u4"
+MARKET_AUX_NEWS_URL = "https://api.marketaux.com/v1/news/all"
+
+# Current UTC time minus 1 hour
+published_after_1 = (datetime.now(timezone.utc) - timedelta(minutes=60)).strftime("%Y-%m-%dT%H:%M:%S")
+published_after_2 = (datetime.now(timezone.utc) - timedelta(minutes=240)).strftime("%Y-%m-%dT%H:%M:%S")
+
+airtable_crud = AirtableCRUD(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+
+uuid = ''
+def create_image(row_data):
+    # 1. Create image request
+    url = "https://api.bannerbear.com/v2/images"
+    data = row_data['fields']
+    print(data)
+    data = {
+        "project_id": PROJECT_ID,  # required with Master Key
+        "template": TEMPLATE_ID,
+        "modifications": [
+            {
+                "name": "image_container",
+                "image_url": data['image_url']
+            },
+            {
+                "name": "title",
+                "text": data['title']
+            },
+            {"name": "label_tag", "text": 'Stocks:  ' + data["symbols"] + ' Related News' if (data["symbols"] != '')  else  'Breaking News' },
+            {"name": "subtitle", "text": "source: " + data["source"]},
+            {"name": "footer_1", "text": "@the.current.capsule"},
+            {"name": "footer_2", "text": "The Current Capsule"}
+        ]
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    print("Status Code:", response.status_code)
+    resp_json = response.json()
+    uid = resp_json.get("uid")
+    if (uid):
+        time.sleep(30)
+        success = fetch_bannerbear_image(API_KEY, uid, row_data['id'])
+        if success:
+            print("Image fetch process completed.")
+        else:
+            print("Image fetch process failed.")
+
+    print("Initial Response:", resp_json)
+
+
+def fetch_bannerbear_image(api_key, image_uid, row_id):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    image_url = f"{BANNERBEAR_BASE_URL}/images/{image_uid}"
+
+    try:
+        # Step 1: Fetch image metadata from Bannerbear API
+        metadata_response = requests.get(image_url, headers=headers, params={'project_id': PROJECT_ID})
+        metadata_response.raise_for_status()  # Raise an exception for HTTP errors
+        image_metadata = metadata_response.json()
+
+        # Step 2: Extract the direct image URL from the metadata
+        direct_image_download_url = image_metadata.get("image_url")
+        if not direct_image_download_url:
+            print("Error: 'image_url' not found in Bannerbear API response.")
+            return False
+
+        update_data = {"media_image": direct_image_download_url}
+        print("erer")
+        updated_record = airtable_crud.update_record(row_id, update_data)
+        if updated_record:
+            print("Record updated successfully:", updated_record)
+        else:
+            print("Failed to update record.")
+
+        # Step 3: Download the image content directly
+        # This request does not need Bannerbear API headers as it's a direct image URL
+        image_content_response = requests.get(direct_image_download_url, stream=True)
+        image_content_response.raise_for_status()  # Raise an exception for HTTP errors
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching image from Bannerbear: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Bannerbear API Response: {e.response.text}")
+        return False
+
 
 def fetch_news_from_polygon(api_key, date_gte, limit=10, order="asc", sort="published_utc"):
     params = {
-        "published_utc.gte": date_gte,
-        "order": order,
+        "api_token": api_key,  # replace with your valid token
         "limit": limit,
-        "sort": sort,
-        "apiKey": api_key
+        "countries": "in",
+        "published_after": date_gte
     }
+    print(params)
     try:
-        response = requests.get(POLYGON_NEWS_URL, params=params)
+        response = requests.get(MARKET_AUX_NEWS_URL, params=params)
         response.raise_for_status()
         data = response.json()
-        return data.get('results', [])
+        return data.get('data', [])
+
     except requests.exceptions.RequestException as e:
         print(f"Error fetching news from Polygon.io: {e}")
         return []
 
 def main():
     print("--- Fetching News and Pushing to Airtable ---")
-    
+
     # Initialize Airtable CRUD
-    airtable_crud = AirtableCRUD(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
     publishers_crud = AirtableCRUD(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_PUBLISHERS_TABLE_NAME)
 
-    # Fetch table schema to get allowed multi-select options
-    print("--- Fetching Airtable Table Schema ---")
-    table_schema = airtable_crud.get_table_schema()
-    publishers_schema = publishers_crud.get_table_schema()
-
-    allowed_tickers = set()
-    allowed_keywords = set()
-    existing_publishers = {}
-
-    if table_schema:
-        for field in table_schema:
-            if field.get('name') == 'tickers' and field.get('type') == 'multipleSelect':
-                for option in field.get('options', {}).get('choices', []):
-                    allowed_tickers.add(option.get('name'))
-            elif field.get('name') == 'keywords' and field.get('type') == 'multipleSelect':
-                for option in field.get('options', {}).get('choices', []):
-                    allowed_keywords.add(option.get('name'))
-        print(f"Allowed Tickers: {allowed_tickers}")
-        print(f"Allowed Keywords: {allowed_keywords}")
-    else:
-        print("Failed to retrieve Airtable table schema for news_articles. Proceeding without filtering multi-select options.")
-
-    if publishers_schema:
-        for field in publishers_schema:
-            if field.get('name') == 'name' and field.get('type') == 'singleLineText': # Assuming 'name' is the primary field for publishers
-                # Fetch all existing publisher records to build a lookup
-                all_publishers = publishers_crud.list_records()
-                if all_publishers and "records" in all_publishers:
-                    for publisher_record in all_publishers["records"]:
-                        publisher_name = publisher_record.get("fields", {}).get('name')
-                        publisher_id = publisher_record.get('id')
-                        if publisher_name and publisher_id:
-                            existing_publishers[publisher_name] = publisher_id
-                    break
-        print(f"Existing Publishers: {existing_publishers}")
-    else:
-        print("Failed to retrieve Airtable table schema for publishers. Proceeding without linking publishers.")
-
     # Fetch news from Polygon.io (example date)
-    news_data = fetch_news_from_polygon(POLYGON_API_KEY, date_gte="2025-08-24T00:00:00Z", limit=10)
+    news_data = fetch_news_from_polygon(MARKET_AUX_API_KEY, limit=1,date_gte=published_after_1 )
+    if len(news_data) < 1:
+        print(f"Fetched {len(news_data)} news articles. Trying again")
+        news_data = fetch_news_from_polygon(MARKET_AUX_API_KEY, limit=1, date_gte=published_after_2)
 
     if news_data:
         print(f"Fetched {len(news_data)} news articles.")
-        airtable_records = []
         for article in news_data:
-            # Filter Tickers and Keywords to only include allowed options
-            filtered_tickers = [ticker for ticker in article.get('tickers', []) if ticker in allowed_tickers]
-            filtered_keywords = [keyword for keyword in article.get('keywords', []) if keyword in allowed_keywords]
+            print(article)
+            # Extract only the fields you want
+            selected_data = {
+                "uuid": article.get("uuid"),
+                "title": article.get("title"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "url": article.get("url"),
+                "keywords": article.get("keywords"),
+                "snippet": article.get("snippet"),
+                "image_url": article.get("image_url"),
+                "source": article.get("source"),
+                "symbols": ", ".join(entity.get("symbol").split('.')[0] for entity in article.get("entities", []) if entity.get("symbol"))
 
-            # Handle Publisher linking
-            publisher_name = article.get('publisher', {}).get('name')
-            publisher_link_id = None
-
-            if publisher_name:
-                if publisher_name in existing_publishers:
-                    publisher_link_id = existing_publishers[publisher_name]
-                else:
-                    # Create new publisher if it doesn't exist (and if allowed by API key)
-                    new_publisher_data = {"name": publisher_name} # Use lowercase 'name'
-                    created_publisher = publishers_crud.create_record(new_publisher_data)
-                    if created_publisher:
-                        publisher_link_id = created_publisher.get('id')
-                        existing_publishers[publisher_name] = publisher_link_id # Add to lookup
-                    else:
-                        print(f"Failed to create publisher: {publisher_name}")
-                
-            record = {
-                'id': article.get('id'),
-                'title': article.get('title'),
-                'author': article.get('author'),
-                'published_date': datetime.fromisoformat(article.get('published_utc').replace('Z', '+00:00')).strftime('%Y-%m-%d'),
-                'published_utc': article.get('published_utc').replace('Z', '+00:00'),
-                'article_url': article.get('article_url'),
-                'description': article.get('description'),
-                'image_url': article.get('image_url'),
-                'tickers': filtered_tickers,
-                'keywords': filtered_keywords,
-                'posted_status': 'false',
-                'insights': json.dumps(article.get('insights', [])), # Storing as JSON string for multilineText
             }
-            if publisher_link_id:
-                record['publisher'] = [publisher_link_id]
-            
-            airtable_records.append(record)
-
-        # Fetch existing records from Airtable to check for duplicates
-        print("--- Fetching Existing Records from Airtable ---")
-        existing_records_response = airtable_crud.list_records(published_date_gte="2025-08-25") # Use the same date as news fetch or adjust
-        existing_unique_ids = set()
-
-        if existing_records_response and "records" in existing_records_response:
-            for record in existing_records_response["records"]:
-                record_id = record.get("fields", {}).get("id") # Use 'id' as the unique identifier
-                if record_id:
-                    existing_unique_ids.add(record_id)
-            print(f"Found {len(existing_unique_ids)} existing unique record IDs.")
-
-        # Filter out duplicate news articles
-        filtered_airtable_records = []
-        for record in airtable_records:
-            record_id = record.get("id") # Use 'id' as the unique identifier
-            
-            if record_id not in existing_unique_ids:
-                filtered_airtable_records.append(record)
-
-        if not filtered_airtable_records:
-            print("All fetched news articles are duplicates or no valid records to push.")
-            return
 
         # Batch create records in Airtable
         print("--- Batch Creating Records in Airtable ---")
-        created_records = airtable_crud.batch_create_records(filtered_airtable_records)
+        created_records = airtable_crud.batch_create_records([selected_data])
 
         if created_records:
             print(f"Successfully created {len(created_records)} records in Airtable.")
+
             for record in created_records:
                 print(f"Created Record ID: {record.get('id')}, Title: {record.get('fields', {}).get('title')}")
+                create_image(record)
+                print(f"Creating Image...")
         else:
             print("Failed to batch create records in Airtable.")
     else:
