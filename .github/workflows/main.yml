@@ -2,7 +2,7 @@ name: Run Python Script Every 5 min
 
 on:
   schedule:
-    - cron: "00 1 * * *"   # every hour, at minute 0 (UTC)
+    - cron: "35 * * * *"   # every hour, at minute 0 (UTC)
   workflow_dispatch:       # manual trigger
   push:
     branches:
