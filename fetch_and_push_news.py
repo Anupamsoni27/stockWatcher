@@ -118,6 +118,7 @@ def fetch_news_from_polygon(api_key, date_gte, limit=10, order="asc", sort="publ
         "api_token": api_key,  # replace with your valid token
         "limit": limit,
         "countries": "in",
+        'language': 'en',
         "published_after": date_gte
     }
     print(params)
