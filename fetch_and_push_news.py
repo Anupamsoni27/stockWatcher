@@ -163,19 +163,21 @@ def main():
 
             }
 
+        existing_record_uuids = [record['fields']['uuid'] for record in airtable_crud.list_records()['records']]
         # Batch create records in Airtable
         print("--- Batch Creating Records in Airtable ---")
-        created_records = airtable_crud.batch_create_records([selected_data])
+        if selected_data['uuid'] not in existing_record_uuids:
+            created_records = airtable_crud.batch_create_records([selected_data])
 
-        if created_records:
-            print(f"Successfully created {len(created_records)} records in Airtable.")
+            if created_records:
+                print(f"Successfully created {len(created_records)} records in Airtable.")
 
-            for record in created_records:
-                print(f"Created Record ID: {record.get('id')}, Title: {record.get('fields', {}).get('title')}")
-                create_image(record)
-                print(f"Creating Image...")
-        else:
-            print("Failed to batch create records in Airtable.")
+                for record in created_records:
+                    print(f"Created Record ID: {record.get('id')}, Title: {record.get('fields', {}).get('title')}")
+                    create_image(record)
+                    print(f"Creating Image...")
+            else:
+                print("Failed to batch create records in Airtable.")
     else:
         print("No news articles fetched.")
 
