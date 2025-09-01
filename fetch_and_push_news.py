@@ -12,7 +12,7 @@ AIRTABLE_TABLE_NAME = "tblsgL4bwLb4ujnZ5" # article table
 AIRTABLE_PUBLISHERS_TABLE_NAME = "tbldeb53sZHQiaNXs" # publishers table
 
 
-API_KEY = "bb_ma_b05c5e0cb2e40da737c79d98fcb7e2"
+API_KEY = "bb_ma_7a63cbb30028f670b8c87a4bd35c3d"
 TEMPLATE_ID = "V4WN6JDxdBAWD3Gqjk"
 PROJECT_ID = "40dxrJ19eBJ1vYelXR"  # from Bannerbear dashboard
 BANNERBEAR_BASE_URL = "https://api.bannerbear.com/v2"
